@@ -18,6 +18,7 @@ import math
 import os
 import pickle
 
+rnd.seed(1224)
 
 # these two functions save and load resp. .pkl files:
 
@@ -51,8 +52,11 @@ def BETA(mean,var):   # returns the a and b params for the beta dist. given mean
 def candidate(graph,node):
     candidates = []
     for nde in graph.neighbors(node):
-        candidates.extend([(nde,x) for x in graph.neighbors(nde) if graph.nodes[x]['block']==graph.nodes[nde]['block'] and x not in [node]+list(graph.neighbors(node))])
-        
+        #candidates.extend([(nde,x) for x in graph.neighbors(nde) if graph.nodes[x]['block']==graph.nodes[nde]['block'] and x not in [node]+list(graph.neighbors(node))])
+        for x in graph.neighbors(nde):
+            if(graph.nodes[x]['block'] == graph.nodes[nde]['block'] and x not in [node]+ list(graph.neighbors(node))):
+                candidates.append((nde,x))
+    
     return candidates
     
 def clearance(alpha0,num,p0,p1,p_clear): # alpha0 gives the % of type 0 in num (1-alpha0 is the % of type 1), p0 gives the % of alpha0*num that has the clearane allele, p1 gives the corresponding % of (1-alpha0)*num; all are randomly put into an array of len = num
@@ -196,12 +200,14 @@ def HCV_ABM_2(graph,positions,p_decay,p_birth,p_death,t_steps,no_blocks=2): # ne
             
             g.add_node(node_num,block=block_num,needles=[rnd.randint(1,3),0],health=0,immunity=immunity,immunity_type=immunity_type,p_lend=P_lend,p_accept=P_accept,p_use=P_use,p_break=P_break,p_link=P_link,drug_a=Drug_a,drug_b=Drug_b,drug_c=Drug_c,age=Age,target=Target)
             birth += 1
-
-            
-            if sum([g.degree(nde) for nde in block_ndes])>0:    # if the normalization is non-zero
+    
+            totalDegrees = sum([g.degree(nde) for nde in block_ndes])
+            if totalDegrees>0:    # if the normalization is non-zero
                 
-                pop_node = np.random.choice(block_ndes,p=[g.degree(nde)/sum([g.degree(nde) for nde in block_ndes]) for nde in block_ndes]) # selected node in block based on degree popularity
-
+                
+                
+                pop_node = np.random.choice(block_ndes,p=[g.degree(nde)/totalDegrees for nde in block_ndes]) # selected node in block based on degree popularity
+                #pop_node = np.random.choice(block_ndes,p=[g.degree(nde)/ sum([g.degree(nde) for nde in block_ndes]) for nde in block_ndes])
 #                 a1 = g.nodes[pop_node]['age']
 #                 a2 = g.nodes[node_num]['age']
 #                 b1 = g.nodes[pop_node]['immunity_type']
@@ -325,7 +331,7 @@ def HCV_ABM_2(graph,positions,p_decay,p_birth,p_death,t_steps,no_blocks=2): # ne
 
             # the below section breaks/creates an edge based on whether node is below their target
 
-            avlble_nodes = [nde for nde in g.nodes() if g.degree(nde)<g.nodes[nde]['target']] # list of available nodes
+            #avlble_nodes = [nde for nde in g.nodes() if g.degree(nde)<g.nodes[nde]['target']] # list of available nodes
 
             if len(candidate(g,node))>0 and rnd.random()<g.nodes[node]['p_break']: # if node decides to break an edge
                 s = sum([1/g.edges[node,nhbr]['wght'] for nhbr in [x[0] for x in candidate(g,node)]])
@@ -381,10 +387,11 @@ def HCV_ABM_2(graph,positions,p_decay,p_birth,p_death,t_steps,no_blocks=2): # ne
                 else:
                     
                     block_ndes = [nde for nde in g if g.nodes[nde]['block']==g.nodes[node]['block']]
-                    
-                    if sum([g.degree(nde) for nde in block_ndes])>0:    # if the normalization is non-zero
+
+                    totalDegrees = sum([g.degree(nde) for nde in block_ndes])
+                    if totalDegrees>0:    # if the normalization is non-zero
                         
-                        pop_node = np.random.choice(block_ndes,p=[g.degree(nde)/sum([g.degree(nde) for nde in block_ndes]) for nde in block_ndes]) # selected node in block based on degree popularity
+                        pop_node = np.random.choice(block_ndes,p=[g.degree(nde)/totalDegrees for nde in block_ndes]) # selected node in block based on degree popularity
 
                         a1 = g.nodes[pop_node]['age']
                         a2 = g.nodes[node]['age']
@@ -611,7 +618,7 @@ for edge in g.edges():
 # ax.axis('off')
 # plt.savefig('network types')
 
-save_obj(g,'initial graph')
+#save_obj(g,'initial graph')
 
 (N_healthy,N_sick,clean_ndls,infct_ndls,Energy,Degrees,Edges_no,birth,death) = HCV_ABM_2(g,positions,p_decay,p_birth,p_death,t_steps)
 
